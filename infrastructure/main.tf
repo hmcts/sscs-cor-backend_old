@@ -50,7 +50,7 @@ locals {
   vaultName           = "${(var.env == "preview") ? local.previewVaultName : local.nonPreviewVaultName}"
 }
 
-module "tribunals-case-api" {
+module "sscs-cor-backend" {
   source       = "git@github.com:hmcts/moj-module-webapp.git?ref=master"
   product      = "${local.app_full_name}"
   location     = "${var.location}"
@@ -85,3 +85,4 @@ module "sscs-cor-backend-key-vault" {
   resource_group_name     = "${azurerm_resource_group.rg.name}"
   product_group_object_id = "300e771f-856c-45cc-b899-40d78281e9c1"
 }
+
