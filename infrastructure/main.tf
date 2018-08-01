@@ -64,9 +64,6 @@ module "sscs-cor-backend" {
   app_settings = {
     IDAM_API_URL = "${data.vault_generic_secret.idam_api.data["value"]}"
 
-    CCD_SERVICE_API_URL = "${local.ccdApi}"
-
-
     SUBSCRIPTIONS_MAC_SECRET = "${data.vault_generic_secret.email_mac_secret.data["value"]}"
 
   }
