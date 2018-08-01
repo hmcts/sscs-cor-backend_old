@@ -1,0 +1,249 @@
+plugins {
+    id 'application'
+    id 'checkstyle'
+    id 'pmd'
+    id 'org.sonarqube' version '2.6.2'
+    id 'jacoco'
+    id 'io.spring.dependency-management' version '1.0.5.RELEASE'
+    id 'org.springframework.boot' version '2.0.3.RELEASE'
+    id 'org.owasp.dependencycheck' version '3.2.1'
+    id 'com.github.ben-manes.versions' version '0.17.0'
+    id 'net.ltgt.apt' version '0.13'
+    id "info.solidsoft.pitest" version '1.3.0'
+}
+
+apply plugin: 'org.springframework.boot'
+apply plugin: 'io.spring.dependency-management'
+
+group = 'uk.gov.hmcts.reform'
+version = '1.0.0'
+
+mainClassName = 'uk.gov.hmcts.reform.sscscorbackend.SscsCorBackendApplication'
+
+sourceCompatibility = 1.8
+targetCompatibility = 1.8
+
+compileJava {
+    options.compilerArgs << '-parameters' << '-Xlint:deprecation' << "-Xlint:unchecked"
+}
+
+compileTestJava {
+    options.compilerArgs << '-Xlint:deprecation'
+}
+
+mainClassName = 'uk.gov.hmcts.reform.sscscorbackend.SscsCorBackendApplication'
+
+check.dependsOn dependencyCheckAnalyze
+
+checkstyle {
+    maxWarnings = 0
+    toolVersion = '8.7'
+    // need to set configDir to rootDir otherwise submodule will use submodule/config/checkstyle
+    configDir = new File(rootDir, 'config/checkstyle')
+}
+
+pmd {
+    toolVersion = "5.8.1"
+    ignoreFailures = true
+    sourceSets = [sourceSets.main, sourceSets.test]
+    reportsDir = file("$project.buildDir/reports/pmd")
+    ruleSetFiles = files("config/pmd/ruleset.xml")
+}
+
+sourceSets {
+    integrationTest {
+        java {
+            compileClasspath += main.output + test.output
+            runtimeClasspath += main.output + test.output
+            srcDir('src/IntegrationTests/java')
+        }
+        resources {
+            srcDir('src/IntegrationTests/resources')
+        }
+    }
+    e2e {
+        java {
+            compileClasspath += main.output + test.output
+            runtimeClasspath += main.output + test.output
+            srcDir('src/e2e/java')
+        }
+    }
+}
+
+dependencies {
+    integrationTestCompile(sourceSets.test.output)
+    e2eCompile(sourceSets.test.output)
+}
+
+task integration(type: Test) {
+    setTestClassesDirs(sourceSets.integrationTest.output.classesDirs)
+    setClasspath(sourceSets.integrationTest.runtimeClasspath)
+}
+
+task functional(type: Test) {
+    group = 'Functional Tests'
+    description = 'Executes non-destructive functional tests in AAT against a running CCD and notification service'
+    setTestClassesDirs(sourceSets.e2e.output.classesDirs)
+    setClasspath(sourceSets.e2e.runtimeClasspath)
+    include "uk/gov/hmcts/sscs/functional/**"
+    exclude "uk/gov/hmcts/sscs/smoke/**"
+}
+
+jacoco {
+    toolVersion = "0.8.1"
+}
+
+jacocoTestReport {
+    executionData(test, integration)
+    reports {
+        xml.enabled = true
+        csv.enabled = false
+        xml.destination file("${project.buildDir}/reports/jacoco/test/jacocoTestReport.xml")
+    }
+}
+
+dependencyUpdates.resolutionStrategy = {
+    componentSelection { rules ->
+        rules.all { ComponentSelection selection ->
+            boolean rejected = ['alpha', 'beta', 'rc', 'cr', 'm'].any { qualifier ->
+                selection.candidate.version ==~ /(?i).*[.-]${qualifier}[.\d-]*/
+            }
+            if (rejected) {
+                selection.reject('Release candidate')
+            }
+        }
+    }
+}
+
+// https://jeremylong.github.io/DependencyCheck/dependency-check-gradle/configuration.html
+dependencyCheck {
+    // Specifies if the build should be failed if a CVSS score above a specified level is identified.
+    // range of 0-10 fails the build, anything greater and it doesn't fail the build
+    failBuildOnCVSS = System.getProperty('dependencyCheck.failBuild') == 'true' ? 0 : 11
+    suppressionFile = 'dependency-check-suppressions.xml'
+    analyzers {
+        // Disable scanning of .NET related binaries
+        assemblyEnabled = false
+    }
+    cve {
+        url20Modified = 'https://nvd.nist.gov/feeds/xml/cve/2.0/nvdcve-2.0-modified.xml.gz'
+        url20Base = 'https://nvd.nist.gov/feeds/xml/cve/2.0/nvdcve-2.0-%d.xml.gz'
+        url12Modified = 'https://nvd.nist.gov/feeds/xml/cve/1.2/nvdcve-modified.xml.gz'
+        url12Base = 'https://nvd.nist.gov/feeds/xml/cve/1.2/nvdcve-%d.xml.gz'
+    }
+}
+
+repositories {
+
+    maven {
+        url "https://dl.bintray.com/hmcts/hmcts-maven"
+    }
+
+    maven {
+        url 'https://repo.spring.io/libs-milestone'
+    }
+
+    jcenter()
+    mavenCentral()
+
+    // jitpack should be last resort
+    // see: https://github.com/jitpack/jitpack.io/issues/1939
+    maven { url 'https://jitpack.io' }
+}
+
+project.tasks['sonarqube'].dependsOn test, integration
+check.dependsOn integration
+checkstyleMain.shouldRunAfter(compileJava)
+test.shouldRunAfter(checkstyleTest)
+integration.shouldRunAfter(checkstyleIntegrationTest)
+integration.shouldRunAfter(test)
+
+sonarqube {
+    properties {
+        property "sonar.projectName", "SSCS - COR backend"
+        property "sonar.projectKey", "SSCSSCB"
+        property "sonar.jacoco.reportPath", "${project.buildDir}/jacoco/test.exec"
+        property "sonar.jacoco.itReportPath", "${project.buildDir}/jacoco/integration.exec"
+        property "sonar.pitest.mode", "reuseReport"
+        property "sonar.pitest.reportsDirectory", "build/reports/pitest"
+    }
+}
+
+configurations {
+    integrationTestCompile.extendsFrom(testCompile)
+    integrationTestRuntime.extendsFrom(testRuntime)
+    e2eCompile.extendsFrom(testCompile)
+    e2eRuntime.extendsFrom(testRuntime)
+}
+
+def springBootVersion = '2.0.4.RELEASE'
+
+def versions = [
+        reformLogging: '3.0.1',
+        springBoot: springBootVersion,
+        springfoxSwagger: '2.8.0',
+        pitest: '1.3.2',
+        gradlePitest: '1.3.0',
+        sonarPitest: '0.5'
+]
+
+ext {
+    springCloudVersion = 'Finchley.M9'
+}
+
+dependencyManagement {
+    imports {
+        mavenBom "org.springframework.cloud:spring-cloud-dependencies:${springCloudVersion}"
+    }
+    dependencies {
+        // checkstyle needs a certain version and so does spring fox swagger, so can't use latest
+        // fun times...
+        dependencySet(group: 'com.google.guava', version: '20.0') {
+            entry 'guava'
+        }
+    }
+}
+
+dependencies {
+    compile('org.springframework.boot:spring-boot-starter-web')
+
+    testCompile('org.springframework.boot:spring-boot-starter-test')
+}
+
+// this is required to force Java running on the Azure Windows Server OS into using
+// UTF-8 as the default character set instead of windows-1252 which causes issues
+applicationDefaultJvmArgs = ["-Dfile.encoding=UTF-8"]
+
+bootJar {
+    archiveName 'sscs-cor-backend.jar'
+    manifest {
+        attributes 'Implementation-Title': project.name,
+                'Implementation-Version': project.version
+    }
+}
+
+jacocoTestReport {
+    executionData(test, integration)
+    reports {
+        xml.enabled = true
+        csv.enabled = false
+    }
+}
+
+pitest {
+    targetClasses = ['uk.gov.hmcts.reform.sscscorbackend.*']
+//    excludedClasses = ['uk.gov.hmcts.sscs.config.*','uk.gov.hmcts.sscs.models.*','uk.gov.hmcts.sscs.TribunalsCaseApiApplication.java']
+    threads = 10
+    outputFormats = ['XML', 'HTML']
+    timestampedReports = false
+    mutationThreshold = 50
+}
+
+task smoke(type: Test) {
+    group = 'verification'
+    description = 'Executes non-destructive smoke tests against a running Tribual Case API'
+    setTestClassesDirs(sourceSets.e2e.output.classesDirs)
+    setClasspath(sourceSets.e2e.runtimeClasspath)
+    include "uk/gov/hmcts/reform/sscscorbackend/smoke/**"
+    exclude "uk/gov/hmcts/reform/sscscorbackend/functional/**"
+}
