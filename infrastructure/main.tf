@@ -50,7 +50,7 @@ locals {
   vaultName           = "${(var.env == "preview") ? local.previewVaultName : local.nonPreviewVaultName}"
 }
 
-module "tribunals-case-api" {
+module "sscs-cor-backend" {
   source       = "git@github.com:hmcts/moj-module-webapp.git?ref=master"
   product      = "${local.app_full_name}"
   location     = "${var.location}"
