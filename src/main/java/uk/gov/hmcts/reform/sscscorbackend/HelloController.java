@@ -11,5 +11,4 @@ public class HelloController {
     public String helloActuator() {
         return "Hello Spring Boot branch";
     }
-
 }
