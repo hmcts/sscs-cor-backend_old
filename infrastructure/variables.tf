@@ -33,3 +33,6 @@ variable "jenkins_AAD_objectId" {
 variable "common_tags" {
   type = "map"
 }
+
+
+variable "tenant_id" {}
