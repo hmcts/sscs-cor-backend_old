@@ -25,3 +25,11 @@ variable "subscription" {
 }
 
 variable "ilbIp" {}
+
+variable "jenkins_AAD_objectId" {
+  type = "string"
+}
+
+variable "common_tags" {
+  type = "map"
+}

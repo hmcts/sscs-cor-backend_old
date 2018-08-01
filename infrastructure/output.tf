@@ -1,5 +1,5 @@
 output "vaultUri" {
-  value = "${module.sscs-tca-key-vault.key_vault_uri}"
+  value = "${module.sscs-cor-backend-key-vault.key_vault_uri}"
 }
 
 output "vaultName" {
