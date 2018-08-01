@@ -4,7 +4,7 @@ locals {
 }
 
 module "sscs-cor-backend" {
-  source       = "git@github.com:hmcts/sscs-cor-backend?ref=master"
+  source       = "git@github.com:contino/moj-module-webapp?ref=master"
   product      = "${var.product}-${local.app}"
   location     = "${var.location}"
   env          = "${var.env}"
