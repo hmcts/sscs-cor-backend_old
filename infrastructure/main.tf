@@ -62,9 +62,6 @@ module "sscs-cor-backend" {
   common_tags  = "${var.common_tags}"
 
   app_settings = {
-    AUTH_PROVIDER_SERVICE_CLIENT_KEY = "${data.vault_generic_secret.sscs_cor_backend_secret.data["value"]}"
-    AUTH_PROVIDER_SERVICE_API_URL    = "${local.s2sCnpUrl}"
-
     IDAM_API_URL = "${data.vault_generic_secret.idam_api.data["value"]}"
 
     CCD_SERVICE_API_URL = "${local.ccdApi}"
