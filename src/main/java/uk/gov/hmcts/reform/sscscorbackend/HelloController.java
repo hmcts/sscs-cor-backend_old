@@ -9,6 +9,6 @@ import org.springframework.web.bind.annotation.RestController;
 public class HelloController {
     @RequestMapping(value = "/hello", method = GET)
     public String helloActuator() {
-        return "Hello Spring Boot";
+        return "Hello Spring Boot branch";
     }
 }
